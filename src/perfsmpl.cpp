@@ -3,12 +3,23 @@
 #include <poll.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <numaif.h>
+#include <numa.h>
+#include <sched.h>
+
 
 perfsmpl *psmpl;
 pthread_mutex_t sample_mutex;
 
 void signal_thread_handler(int sig, siginfo_t *info, void *extra)
 {
+    // unsigned int myCpu, myNuma;
+    // if(getcpu(&myCpu, &myNuma) != 0){
+    //     std::cerr << "getcpu failed" << std::endl; return;
+    // }
+    // std::cout << "cpu " << myCpu << " processing samples" << std::endl;
+
+
     // Block incoming signals
     sigset_t blocksig;
     sigemptyset(&blocksig);
@@ -79,6 +90,9 @@ void perfsmpl::init_attr()
     {
         // TODO: look this up in libpfm
         pe.type = PERF_TYPE_RAW;
+        //0x100B - 100H Nehalem
+        //0x5101cd - sandy bridge and newer
+        //0xD005 - cooper lake
         pe.config = 0x5101cd;
         pe.config1 = sample_threshold; // ldlat
         pe.sample_type =
@@ -120,6 +134,7 @@ int perfsmpl::init_perf()
     if(fd == -1)
     {
         perror("perf_event_open");
+        //cat /proc/sys/kernel/perf_event_paranoid -> set to -1
         return 1;
     }
 
@@ -174,7 +189,7 @@ int perfsmpl::init_sighandler()
             perror("sigaction");
             return 1;
         }
-    }
+    }//--> check if SIGIO is in current set; if yes, remove it (SIG_UNBLOCK)
 
     // Set perf event fd to signal
     ret = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0)|O_ASYNC);
@@ -319,6 +334,19 @@ int perfsmpl::process_single_sample(struct perf_event_mmap_page *mmap_buf)
     if(has_attribute(PERF_SAMPLE_DATA_SRC))
     {
         read_mmap_buffer(mmap_buf,(char*)&pes.data_src,sizeof(uint64_t));
+
+        //get numa reqion of the variable
+        int numa_n = -1;
+        int ret=-100;
+        if(has_attribute(PERF_SAMPLE_IP) && (pes.data_src & 0xF) > 2)
+        {
+            void* ptr_to_check = (void*)&(pes.ip);
+            ret=move_pages(0 , 1, &ptr_to_check, NULL, &numa_n, 0);
+            //ret=move_pages(0 , 1, (void**)&pes.ip, NULL, &numa_n, 0);
+        }
+
+        if(ret == 0)
+            pes.numa_node = numa_n;
     }
 
     if(handler_fn_defined)

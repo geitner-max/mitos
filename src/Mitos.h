@@ -2,6 +2,7 @@
 #define MITOS_H
 
 #include <string.h>
+#include <string>
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -98,6 +99,7 @@ struct perf_event_sample
     size_t num_dims;
     size_t access_index[3];
     const char *data_symbol;
+    int numa_node;
 };
 
 struct mitos_output
@@ -110,6 +112,9 @@ struct mitos_output
     char *dname_topdir;
     char *dname_datadir;
     char *dname_srcdir;
+    char *dname_hwdatadir;
+
+    std::string dname_srcdir_orig;
 
     char *fname_raw;
     char *fname_processed;
