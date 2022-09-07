@@ -155,12 +155,6 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        err = Mitos_pre_process(&mout);
-        if(err)
-        {
-            kill(child, SIGKILL);
-            return 1;
-        }
 
         Mitos_set_sample_mode(SMPL_MEMORY);
         Mitos_set_sample_period(period);
@@ -175,18 +169,13 @@ int main(int argc, char **argv)
             ptrace(PTRACE_CONT,child,0,0);
 
             // Wait until process exits
-            do { wait(&status); } 
+            do { wait(&status); }
             while(!WIFEXITED(status));
         }
         Mitos_end_sampler();
 
         dump_samples(); // anything left over
 
-        std::cout << "Command completed! Processing samples...\n" << std::endl;
-
-        err = Mitos_post_process(argv[cmdarg],&mout);
-        if(err)
-            return 1;
 
         std::cout << "Done!\n" << std::endl;
     }

@@ -21,7 +21,7 @@ enum sample_mode
 };
 
 /*
- * Mitos: 
+ * Mitos:
  * All programs must invoke from these functions.
  */
 
@@ -54,9 +54,9 @@ const char* Mitos_data_source(struct perf_event_sample *s);
 
 // Output
 int Mitos_create_output(mitos_output *mout);
-int Mitos_pre_process(mitos_output *mout);
+//int Mitos_pre_process(mitos_output *mout);
 int Mitos_write_sample(perf_event_sample *s, mitos_output *mout);
-int Mitos_post_process(char *bin_name, mitos_output *mout);
+//int Mitos_post_process(char *bin_name, mitos_output *mout);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -67,7 +67,7 @@ int Mitos_post_process(char *bin_name, mitos_output *mout);
  * Struct containing all raw perf event information
  */
 
-struct perf_event_sample 
+struct perf_event_sample
 {
     //struct perf_event_header header;
     uint64_t   sample_id;           /* if PERF_SAMPLE_IDENTIFIER */

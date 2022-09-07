@@ -67,7 +67,7 @@ int main(int argc, char **argv)
     init_matrices(N,&a,&b,&c);
 
     Mitos_create_output(&mout);
-    Mitos_pre_process(&mout);
+//    Mitos_pre_process(&mout);
 
     Mitos_set_sample_mode(SMPL_MEMORY);
     Mitos_set_handler_fn(&sample_handler,NULL);
@@ -80,5 +80,5 @@ int main(int argc, char **argv)
     matmul(N,a,b,c);
     Mitos_end_sampler();
 
-    Mitos_post_process(argv[0],&mout);
+//    Mitos_post_process(argv[0],&mout);
 }
