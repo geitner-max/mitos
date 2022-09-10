@@ -5,14 +5,18 @@
 #include <link.h>
 
 #include <iostream>
-#include "CodeObject.h"
-#include "InstructionDecoder.h"
+
+#ifdef INCLUDE_DYNINST
+    #include "CodeObject.h"
+    #include "InstructionDecoder.h"
+    using namespace Dyninst;
+    using namespace ParseAPI;
+    using namespace InstructionAPI;
+#else
+    #include <cassert>
+#endif
+
 using namespace std;
-using namespace Dyninst;
-using namespace ParseAPI;
-using namespace InstructionAPI;
-
-
 
 
 int main(int argc, char **argv)
@@ -73,6 +77,7 @@ int main(int argc, char **argv)
     //char* bin_name = (argc == 2) ? ((char*)argv[1]) : "/u/home/vanecek/sshfs/sv_mitos/build/mitos_1634658399/data/samples.csv";
     char* bin_name = "/u/home/vanecek/sshfs/heatdir_orig/heat";
 
+#ifdef INCLUDE_DYNINST
     SymtabCodeSource *sts;
 	CodeObject *co;
 	Instruction instr;
@@ -135,5 +140,6 @@ int main(int argc, char **argv)
 			instr_count++;
 		}
 	}
+#endif
 	return 0;
 }

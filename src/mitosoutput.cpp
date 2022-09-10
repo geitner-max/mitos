@@ -22,14 +22,16 @@
 #  endif
 #endif
 
-//#include <LineInformation.h> // symtabAPI
-#include <CodeObject.h> // parseAPI
-#include <InstructionDecoder.h> // instructionAPI
-#include <Module.h>
-using namespace Dyninst;
-using namespace SymtabAPI;
-using namespace InstructionAPI;
-using namespace ParseAPI;
+#ifdef INCLUDE_DYNINST
+    //#include <LineInformation.h> // symtabAPI
+    #include <CodeObject.h> // parseAPI
+    #include <InstructionDecoder.h> // instructionAPI
+    #include <Module.h>
+    using namespace Dyninst;
+    using namespace SymtabAPI;
+    using namespace InstructionAPI;
+    using namespace ParseAPI;
+#endif
 
 #include "hwloc_dump.h"
 #include "x86_util.h"
@@ -172,6 +174,7 @@ int Mitos_write_sample(perf_event_sample *sample, mitos_output *mout)
 
 int Mitos_post_process(char *bin_name, mitos_output *mout)
 {
+#ifdef INCLUDE_DYNINST
     // Open Symtab object and code source object
     SymtabAPI::Symtab *symtab_obj;
     SymtabCodeSource *symtab_code_src;
@@ -188,6 +191,7 @@ int Mitos_post_process(char *bin_name, mitos_output *mout)
     // Get machine information
     unsigned int inst_length = InstructionDecoder::maxInstructionLength;
     Architecture arch = symtab_obj->getArchitecture();
+#endif
 
     // Open input/output files
     std::ifstream fraw(mout->fname_raw);
@@ -207,13 +211,17 @@ int Mitos_post_process(char *bin_name, mitos_output *mout)
     foffset.close();
     cout << "offset: " << offsetAddr << endl;
 
+#ifdef INCLUDE_DYNINST
     // Read raw samples one by one and get attribute from ip
     Dyninst::Offset ip;
+#endif
     size_t ip_endpos;
     std::string line, ip_str;
     int tmp_line = 0;
+
     while(std::getline(fraw, line).good())
     {
+#ifdef INCLUDE_DYNINST
         // Unknown values
         std::string source;
         std::stringstream line_num;
@@ -307,7 +315,9 @@ int Mitos_post_process(char *bin_name, mitos_output *mout)
               << (instruction.str().empty() ? "??" : instruction.str()  ) << ","
               << (bytes.str().empty()       ? "??" : bytes.str()        ) << ","
               << line << std::endl;
-
+#else
+        fproc << "??,??,??,??," << line << std::endl;
+#endif
         tmp_line++;
     }
 

@@ -10,12 +10,16 @@ set(MITOS_VERSION ${MITOS_MAJOR_VERSION}.${MITOS_MINOR_VERSION}.${MITOS_PATCH_VE
 # Included cmake files
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
+option(INCLUDE_DYNINST "Build with Dyninst code attribution functionality" OFF)
+
 # Packages required
 find_package(Threads REQUIRED)
 find_package(PerfEvents REQUIRED)
 find_package(MPI REQUIRED)
 find_package(Boost REQUIRED)
-find_package(Dyninst REQUIRED SymtabAPI InstructionAPI ParseAPI)
+if(INCLUDE_DYNINST)
+    find_package(Dyninst REQUIRED SymtabAPI InstructionAPI ParseAPI)
+endif()
 find_package(OpenMP)
 
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -31,4 +35,3 @@ export(PACKAGE Mitos)
 # Install cmake export
 install(EXPORT mitos-targets DESTINATION lib/Mitos)
 install(FILES mitos-config.cmake DESTINATION lib/Mitos)
-

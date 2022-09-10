@@ -5,14 +5,16 @@
 #include <set>
 using namespace std;
 
-#include <Instruction.h>
-//#include <Operation.h>
-#include <Expression.h>
-using namespace Dyninst;
-using namespace InstructionAPI;
+#ifdef INCLUDE_DYNINST
+    #include <Instruction.h>
+    //#include <Operation.h>
+    #include <Expression.h>
+    using namespace Dyninst;
+    using namespace InstructionAPI;
 
 size_t getReadSize(Instruction ins)
 {
+
     // Get all read operands and their expressions
     vector<Operand> opds;
     ins.getOperands(opds);
@@ -34,3 +36,5 @@ size_t getReadSize(Instruction ins)
     }
     return readsz;
 }
+
+#endif
