@@ -10,15 +10,32 @@
 
 #include "Mitos.h"
 
-#ifdef USE_DYNINST
+#include <cstdlib>
 
-#include <LineInformation.h> // symtabAPI
+#ifndef __has_include
+  static_assert(false, "__has_include not supported");
+#else
+#  if __cplusplus >= 201703L && __has_include(<filesystem>)
+#    include <filesystem>
+     namespace fs = std::filesystem;
+#  elif __has_include(<experimental/filesystem>)
+#    include <experimental/filesystem>
+     namespace fs = std::experimental::filesystem;
+#  elif __has_include(<boost/filesystem.hpp>)
+#    include <boost/filesystem.hpp>
+     namespace fs = boost::filesystem;
+#  endif
+#endif
+
+#ifdef USE_DYNINST
+//#include <LineInformation.h> // symtabAPI
 #include <CodeObject.h> // parseAPI
 #include <InstructionDecoder.h> // instructionAPI
+#include <Module.h>
 using namespace Dyninst;
 using namespace SymtabAPI;
-using namespace ParseAPI;
 using namespace InstructionAPI;
+using namespace ParseAPI;
 
 #include "x86_util.h" // getReadSize using instructionAPI
 
@@ -43,11 +60,17 @@ int Mitos_create_output(mitos_output *mout, const char *prefix_name)
     ss_dname_srcdir << ss_dname_topdir.str() << "/src";
     mout->dname_srcdir = strdup(ss_dname_srcdir.str().c_str());
 
+    // Set hwdata directory name
+    std::stringstream ss_dname_hwdatadir;
+    ss_dname_hwdatadir << ss_dname_topdir.str() << "/hwdata";
+    mout->dname_hwdatadir = strdup(ss_dname_hwdatadir.str().c_str());
+
     // Create the directories
     int err;
     err = mkdir(mout->dname_topdir,0777);
     err |= mkdir(mout->dname_datadir,0777);
     err |= mkdir(mout->dname_srcdir,0777);
+    err |= mkdir(mout->dname_hwdatadir,0777);
 
     if(err)
     {
@@ -73,6 +96,23 @@ int Mitos_create_output(mitos_output *mout, const char *prefix_name)
         return 1;
     }
 
+    //copy over source code to mitos output folder
+    if (!mout->dname_srcdir_orig.empty())
+    {
+        if(!fs::exists(mout->dname_srcdir_orig))
+        {
+            std::cerr << "Mitos: Source code path " << mout->dname_srcdir_orig << "does not exist!\n";
+            return 1;
+        }
+        std::error_code ec;
+        fs::copy(mout->dname_srcdir_orig, mout->dname_srcdir, ec);
+        if(ec)
+        {
+            std::cerr << "Mitos: Source code path " << mout->dname_srcdir_orig << "was not copied. Error " << ec.value() << ".\n";
+            return 1;
+        }
+    }
+
     mout->ok = true;
 
     return 0;
@@ -81,8 +121,8 @@ int Mitos_create_output(mitos_output *mout, const char *prefix_name)
 int Mitos_pre_process(mitos_output *mout)
 {
     // Create hardware topology file for current hardware
-    std::string fname_hardware_local = std::string(mout->dname_topdir) + "_hardware.xml";
-    int err = dump_hardware_xml(fname_hardware_local.c_str());
+    std::string fname_hardware = std::string(mout->dname_hwdatadir) + "/hwloc.xml";
+    int err = dump_hardware_xml(fname_hardware.c_str());
     if(err)
     {
         std::cerr << "Mitos: Failed to create hardware topology file!\n";
@@ -91,10 +131,19 @@ int Mitos_pre_process(mitos_output *mout)
 
     // hwloc puts the file in the current directory, need to move it
     std::string fname_hardware_final = std::string(mout->dname_topdir) + "/hardware.xml";
-    err = rename(fname_hardware_local.c_str(), fname_hardware_final.c_str());
+    err = rename(fname_hardware.c_str(), fname_hardware_final.c_str());
     if(err)
     {
         std::cerr << "Mitos: Failed to move hardware topology file to output directory!\n";
+        return 1;
+    }
+
+    std::string fname_lshw = std::string(mout->dname_hwdatadir) + "/lshw.xml";
+    std::string lshw_cmd = "lshw -c memory -xml > " + fname_lshw;
+    err = system(lshw_cmd.c_str());
+    if(err)
+    {
+        std::cerr << "Mitos: Failed to create hardware topology file!\n";
         return 1;
     }
 
@@ -109,7 +158,7 @@ int Mitos_write_sample(perf_event_sample *sample, mitos_output *mout)
     Mitos_resolve_symbol(sample);
 
     fprintf(mout->fout_raw,
-            "%llu,%s,%llu,%llu,%llu,%llu,%llu,%u,%u,%llu,%llu,%u,%llu,%s,%s,%s,%s,%s\n",
+            "%llu,%s,%llu,%llu,%llu,%llu,%llu,%u,%u,%llu,%llu,%u,%llu,%s,%s,%s,%s,%s,%d\n",
             sample->ip,
             sample->data_symbol,
             sample->data_size,
@@ -127,9 +176,9 @@ int Mitos_write_sample(perf_event_sample *sample, mitos_output *mout)
             sample->mem_hit,
             sample->mem_op,
             sample->mem_snoop,
-            sample->mem_tlb
-            );
-    
+            sample->mem_tlb,
+            sample->numa_node);
+
     return 0;
 }
 
@@ -155,10 +204,10 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
     return 0;
 #else
     // Open Symtab object and code source object
-    Symtab *symtab_obj;
+    SymtabAPI::Symtab *symtab_obj;
     SymtabCodeSource *symtab_code_src;
 
-    int sym_success = Symtab::openFile(symtab_obj,bin_name);
+    int sym_success = SymtabAPI::Symtab::openFile(symtab_obj,bin_name);
     if(!sym_success)
     {
         std::cerr << "Mitos: Failed to open Symtab object for " << bin_name << std::endl;
@@ -182,16 +231,28 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
     Architecture arch = symtab_obj->getArchitecture();
 
     // Write header for processed samples
-    fproc << "source,line,instruction,bytes,ip,variable,buffer_size,dims,xidx,yidx,zidx,pid,tid,time,addr,cpu,latency,level,hit_type,op_type,snoop_mode,tlb_access\n";
+    fproc << "source,line,instruction,bytes,ip,variable,buffer_size,dims,xidx,yidx,zidx,pid,tid,time,addr,cpu,latency,level,hit_type,op_type,snoop_mode,tlb_access,numa\n";
+
+    //get base (.text) virtual address of the measured process
+    std::ifstream foffset("/u/home/vanecek/sshfs/sv_mitos/build/test3.txt");
+    long long offsetAddr = 0;
+    string str_offset;
+    if(std::getline(foffset, str_offset).good())
+    {
+        offsetAddr = strtoll(str_offset.c_str(),NULL,0);
+    }
+    foffset.close();
+    cout << "offset: " << offsetAddr << endl;
 
     // Read raw samples one by one and get attribute from ip
-    uint64_t ip;
+    Dyninst::Offset ip;
     size_t ip_endpos;
     std::string line, ip_str;
+    int tmp_line = 0;
     while(std::getline(fraw, line).good())
     {
         // Unknown values
-        std::stringstream source;
+        std::string source;
         std::stringstream line_num;
         std::stringstream instruction;
         std::stringstream bytes;
@@ -199,14 +260,59 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
         // Extract ip
         size_t ip_endpos = line.find(',');
         std::string ip_str = line.substr(0,ip_endpos);
-        ip = (uint64_t)strtoull(ip_str.c_str(),NULL,0);
-
+        ip = (Dyninst::Offset)(strtoull(ip_str.c_str(),NULL,0) - offsetAddr);
+        if(tmp_line%4000==0)
+            cout << ip << endl;
         // Parse ip for source line info
-        std::vector<Statement*> stats;
-        sym_success = symtab_obj->getSourceLines(stats,ip);
+        std::vector<SymtabAPI::Statement::Ptr> stats;
+        sym_success = symtab_obj->getSourceLines(stats, ip);
+
+        // if(tmp_line%100==0)
+        // {
+        //     Offset addressInRange = ip;
+        //     std::vector<SymtabAPI::Statement::Ptr> lines = stats;
+        //
+        //     unsigned int originalSize = lines.size();
+        //     std::set<Module*> mods_for_offset;
+        //     symtab_obj->findModuleByOffset(mods_for_offset, addressInRange);
+        //
+        //     cout << "mods found: " << mods_for_offset.size() << endl;
+        //     for(auto i = mods_for_offset.begin();
+        //     i != mods_for_offset.end();
+        //     ++i)
+        //     {
+        //         (*i)->getSourceLines(lines, addressInRange);
+        //     }
+        //
+        //     cout << "line " << tmp_line << "sym_success " << sym_success << endl;
+        //
+        //     // const_iterator start_addr_valid = project<SymtabAPI::Statement::addr_range>(get<SymtabAPI::Statement::upper_bound>().lower_bound(addressInRange ));
+        //     // const_iterator end_addr_valid = impl_t::upper_bound(addressInRange );
+        //     // cout << start_addr_valid << endl << end_addr_valid << endl;
+        //     // while(start_addr_valid != end_addr_valid && start_addr_valid != end())
+        //     // {
+        //     //     if(*(*start_addr_valid) == addressInRange)
+        //     //     {
+        //     //         lines.push_back(*start_addr_valid);
+        //     //     }
+        //     //     ++start_addr_valid;
+        //     // }
+        //
+        //     cout << std::hex << "Statement: < [" << stats[0]->startAddr() << ", " << stats[0]->endAddr() << "): "
+        //    << std::dec << stats[0]->getFile() << ":" << stats[0]->getLine() << " >" << endl;
+        // }
+
         if(sym_success)
         {
-            source << stats[0]->getFile();
+            source = (string)stats[0]->getFile();
+            if (!mout->dname_srcdir_orig.empty())
+            {
+                std::size_t pos = source.find(mout->dname_srcdir_orig);
+                if(pos == 0){
+                    source = source.substr(mout->dname_srcdir_orig.length() + (mout->dname_srcdir_orig.back() == '/' ? 0 : 1)); //to remove slash if there is none in the string
+                }
+
+            }
             line_num << stats[0]->getLine();
         }
 
@@ -220,24 +326,26 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
             {
                 // Get instruction
                 InstructionDecoder dec(inst_raw,inst_length,arch);
-                Instruction::Ptr inst = dec.decode();
-                Operation op = inst->getOperation();
+                Instruction inst = dec.decode();
+                Operation op = inst.getOperation();
                 entryID eid = op.getID();
-                
+
                 instruction << NS_x86::entryNames_IAPI[eid];
 
                 // Get bytes read
-                if(inst->readsMemory())
+                if(inst.readsMemory())
                     bytes << getReadSize(inst);
             }
         }
 
         // Write out the sample
-        fproc << (source.str().empty()      ? "??" : source.str()       ) << ","
+        fproc << (source.empty()            ? "??" : source             ) << ","
               << (line_num.str().empty()    ? "??" : line_num.str()     ) << ","
               << (instruction.str().empty() ? "??" : instruction.str()  ) << ","
               << (bytes.str().empty()       ? "??" : bytes.str()        ) << ","
               << line << std::endl;
+
+        tmp_line++;
     }
 
     fproc.close();
@@ -254,4 +362,3 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
 
     return 0;
 }
-

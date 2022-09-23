@@ -29,6 +29,7 @@ void dump_samples()
 
 void sample_handler(perf_event_sample *sample, void *args)
 {
+
     samples.push_back(*sample);
 
     if(samples.size() >= bufsz)
@@ -43,6 +44,7 @@ void usage(char **argv)
     std::cerr << "        -b sample buffer size (default 4096)" << std::endl;
     std::cerr << "        -p sample period (default 4000)" << std::endl;
     std::cerr << "        -t sample latency threshold (default 10)" << std::endl;
+    std::cerr << "        -s top folder of source code to copy" << std::endl;
     std::cerr << "    <cmd>: command to sample on (required)" << std::endl;
     std::cerr << "    [args]: command arguments" << std::endl;
 }
@@ -52,6 +54,7 @@ void set_defaults()
     bufsz = DEFAULT_BUFSZ;
     period = DEFAULT_PERIOD;
     thresh = DEFAULT_THRESH;
+    mout.dname_srcdir_orig = "";
 }
 
 int parse_args(int argc, char **argv)
@@ -59,7 +62,7 @@ int parse_args(int argc, char **argv)
     set_defaults();
 
     int c;
-    while((c=getopt(argc, argv, "b:p:t:")) != -1)
+    while((c=getopt(argc, argv, "b:p:t:s:")) != -1)
     {
         switch(c)
         {
@@ -71,6 +74,9 @@ int parse_args(int argc, char **argv)
                 break;
             case 't':
                 thresh = atoi(optarg);
+                break;
+            case 's':
+                mout.dname_srcdir_orig = optarg;
                 break;
             case '?':
                 usage(argv);
@@ -156,7 +162,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        Mitos_set_sample_time_frequency(period);
+        Mitos_set_sample_event_period(period);
         Mitos_set_sample_latency_threshold(thresh);
 
         Mitos_set_handler_fn(&sample_handler,NULL);
@@ -166,7 +172,7 @@ int main(int argc, char **argv)
             ptrace(PTRACE_CONT,child,0,0);
 
             // Wait until process exits
-            do { wait(&status); } 
+            do { wait(&status); }
             while(!WIFEXITED(status));
         }
         Mitos_end_sampler();

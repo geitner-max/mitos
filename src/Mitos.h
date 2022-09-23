@@ -2,11 +2,12 @@
 #define MITOS_H
 
 #include <string.h>
+#include <string>
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <bits/pthreadtypes.h>
+// #include <bits/pthreadtypes.h>
 
 struct mem_symbol;
 struct perf_event_sample;
@@ -16,7 +17,7 @@ typedef void (*sample_handler_fn_t)(struct perf_event_sample *sample, void *args
 typedef void (*end_fn_t)(void *args);
 
 /*
- * Mitos: 
+ * Mitos:
  * All programs must invoke from these functions.
  */
 
@@ -59,7 +60,7 @@ int Mitos_post_process(const char *bin_name, struct mitos_output *mout);
  * Struct containing all raw perf event information
  */
 
-struct perf_event_sample 
+struct perf_event_sample
 {
     //struct perf_event_header header;
     uint64_t   sample_id;           /* if PERF_SAMPLE_IDENTIFIER */
@@ -98,6 +99,7 @@ struct perf_event_sample
     const char *mem_snoop;
     const char *mem_lock;
     const char *mem_tlb;
+    int numa_node;
 };
 
 struct mitos_output
@@ -107,6 +109,9 @@ struct mitos_output
     char *dname_topdir;
     char *dname_datadir;
     char *dname_srcdir;
+    char *dname_hwdatadir;
+
+    std::string dname_srcdir_orig;
 
     char *fname_raw;
     char *fname_processed;

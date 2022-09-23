@@ -17,4 +17,3 @@ if(MPI_FOUND)
     add_executable(mpi_matmul mpi_matmul.cpp)
     target_link_libraries(mpi_matmul mitos mitoshooks ${MPI_LIBRARIES})
 endif()
-

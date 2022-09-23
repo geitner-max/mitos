@@ -10,32 +10,34 @@ set(MITOSHOOKS_SRC_FILES mitoshooks.cpp)
 
 # Libraries (created)
 add_library(mitos SHARED ${MITOS_SRC_FILES})
-add_library(mitoshooks SHARED ${MITOSHOOKS_SRC_FILES})
+add_library(mitoshooks SHARED ${MITOSHOOKS_SRC_FILES} ${MITOS_SRC_FILES})
 
 # Binaries
 add_executable(mitosrun mitosrun.cpp)
 
 # Linkage
-target_link_libraries(mitos mitoshooks hwloc ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(mitos mitoshooks numa hwloc ${CMAKE_THREAD_LIBS_INIT} stdc++fs)
 target_link_libraries(mitosrun mitos)
 target_link_libraries(mitoshooks dl)
 
 if(MPI_FOUND)
-    target_link_libraries(mitos ${MPI_LIBRARIES}) 
+    target_link_libraries(mitos ${MPI_LIBRARIES})
 endif()
 
 if(Dyninst_FOUND)
-    target_link_libraries(mitos symtabAPI instructionAPI parseAPI) 
+    target_link_libraries(mitos symtabAPI instructionAPI parseAPI)
 endif()
 
 
 # Install
 install(FILES ${MITOS_HDR_PUBLIC}
         DESTINATION "include/Mitos")
-install(TARGETS mitosrun 
+install(TARGETS mitosrun
         EXPORT mitos-targets
         DESTINATION bin)
-install(TARGETS mitos mitoshooks
+install(TARGETS mitos
         EXPORT mitos-targets
         DESTINATION lib)
-
+install(TARGETS mitoshooks
+        EXPORT mitos-targets
+        DESTINATION lib)
