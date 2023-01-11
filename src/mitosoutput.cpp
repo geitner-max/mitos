@@ -261,8 +261,6 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
         size_t ip_endpos = line.find(',');
         std::string ip_str = line.substr(0,ip_endpos);
         ip = (Dyninst::Offset)(strtoull(ip_str.c_str(),NULL,0) - offsetAddr);
-        if(tmp_line%4000==0)
-            cout << ip << endl;
         // Parse ip for source line info
         std::vector<SymtabAPI::Statement::Ptr> stats;
         sym_success = symtab_obj->getSourceLines(stats, ip);

@@ -56,13 +56,13 @@ mitos_output mout;
 
 void sample_handler(perf_event_sample *sample, void *args)
 {
-    fprintf(stderr, "MPI handler sample: cpu=%d, tid=%d\n", sample->cpu, sample->tid);
+//    fprintf(stderr, "MPI handler sample: cpu=%d, tid=%d\n", sample->cpu, sample->tid);
     Mitos_write_sample(sample, &mout);
 }
 
 int MPI_Init(int *argc, char ***argv)
 {
-    fprintf(stderr, "MPI_Init hook\n");
+//    fprintf(stderr, "MPI_Init hook\n");
     int ret = PMPI_Init(argc, argv);
 
     int mpi_rank;
@@ -84,7 +84,7 @@ int MPI_Init(int *argc, char ***argv)
 
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
-    fprintf(stderr, "MPI_Init_thread hook\n");
+//    fprintf(stderr, "MPI_Init_thread hook\n");
     int ret = PMPI_Init_thread(argc, argv, required, provided);
 
     int mpi_rank;
