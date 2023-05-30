@@ -1,5 +1,5 @@
-project(Mitos C CXX)
 cmake_minimum_required(VERSION 3.21)
+project(Mitos C CXX)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CXX_STANDARD_REQUIRED ON)
@@ -9,6 +9,44 @@ set(MITOS_MAJOR_VERSION 0)
 set(MITOS_MINOR_VERSION 8)
 set(MITOS_PATCH_VERSION 1)
 set(MITOS_VERSION ${MITOS_MAJOR_VERSION}.${MITOS_MINOR_VERSION}.${MITOS_PATCH_VERSION})
+set(IBS_TYPE "OFF" "IBS_FETCH" "IBS_OP" CACHE STRING "Enabling Instruction-Based Sampling")
+set_property(CACHE IBS_TYPE PROPERTY STRINGS
+        "OFF" "IBS_FETCH" "IBS_OP")
+
+set(IBS_SAMPLING_MODE "ALL_ON" "ALL_SELECTIVE_ON" "THREAD_MIGRATION" CACHE STRING "ALL_ON: Run sampling on all cores; ALL_SELECTIVE_ON: Track where process runs and turn sampling on and off depending on running cpu; THREAD_MIGRATION: Run single sampler that migrates core after detecting a core migration")
+set_property(CACHE IBS_SAMPLING_MODE PROPERTY STRINGS
+        "ALL_ON" "ALL_SELECTIVE_ON" "THREAD_MIGRATION")
+
+if ((IBS_TYPE STREQUAL "IBS_FETCH") OR (IBS_TYPE STREQUAL "IBS_OP"))
+    # define sampling mode for IBS
+    if (IBS_SAMPLING_MODE STREQUAL "ALL_ON")
+        message(STATUS "IBS Sampling Mode ALL_ON Selected: Monitor all cores")
+        add_definitions(-DUSE_IBS_ALL_ON)
+    elseif (IBS_SAMPLING_MODE STREQUAL "ALL_SELECTIVE_ON")
+        message(STATUS "IBS Sampling Mode ALL_SELECTIVE_ON Selected: Monitor cores running process; enable/disable sampling at runtime")
+        add_definitions(-DUSE_IBS_ALL_SELECTIVE_ON)
+    elseif (IBS_SAMPLING_MODE STREQUAL "THREAD_MIGRATION")
+        message(STATUS "IBS Sampling Mode THREAD_MIGRATION Selected: Monitor one thread; Migrate sampler at runtime from one core to another")
+        add_definitions(-DUSE_IBS_THREAD_MIGRATION)
+    else()
+        message(STATUS "IBS not set")
+    endif ()
+endif ()
+
+if (IBS_TYPE STREQUAL "IBS_FETCH")
+    message(STATUS "Switch IBS_FETCH ON")
+    add_definitions(-DUSE_IBS_FETCH)
+elseif (IBS_TYPE STREQUAL "IBS_OP")
+    message(STATUS "Switch IBS_OP On")
+    add_definitions(-DUSE_IBS_OP)
+else()
+    message(STATUS "IBS not set")
+endif ()
+
+
+
+#set_property(CACHE IBS_MODE PROPERTY STRINGS
+#        "OFF" "IBS_FETCH" "IBS_OP")
 
 # Included cmake files
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
@@ -31,6 +69,8 @@ endif()
 if(MPI_FOUND)
     add_definitions(-DUSE_MPI)
 endif()
+
+
 
 if(Dyninst_FOUND)
     add_definitions(-DUSE_DYNINST)

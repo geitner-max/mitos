@@ -8,10 +8,11 @@ set(MITOS_HDR_FILES procsmpl.h mmap_processor.h mattr.h Mitos.h)
 set(MITOS_HDR_PUBLIC Mitos.h)
 set(MITOSHOOKS_SRC_FILES mitoshooks.cpp)
 
+
 # Libraries (created)
 add_library(mitos SHARED ${MITOS_SRC_FILES})
 add_library(mitoshooks SHARED ${MITOSHOOKS_SRC_FILES} ${MITOS_SRC_FILES})
-
+add_library(mitoshooks_omp SHARED ${MITOSHOOKS_SRC_FILES} ${MITOS_SRC_FILES})
 # Binaries
 add_executable(mitosrun mitosrun.cpp)
 
@@ -39,5 +40,8 @@ install(TARGETS mitos
         EXPORT mitos-targets
         DESTINATION lib)
 install(TARGETS mitoshooks
+        EXPORT mitos-targets
+        DESTINATION lib)
+install(TARGETS mitoshooks_omp
         EXPORT mitos-targets
         DESTINATION lib)

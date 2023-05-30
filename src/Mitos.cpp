@@ -6,6 +6,10 @@
 static procsmpl m_procsmpl;
 static mattr m_mattr;
 
+void Mitos_set_pid(pid_t pid) {
+    m_procsmpl.set_pid(pid);
+}
+
 void Mitos_set_sample_time_frequency(uint64_t p) 
 { 
     m_procsmpl.set_sample_time_frequency(p); 

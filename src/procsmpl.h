@@ -18,11 +18,13 @@
 class procsmpl;
 class threadsmpl;
 
+
 struct perf_event_container
 {
     int fd;
     struct perf_event_attr attr;
     struct perf_event_mmap_page *mmap_buf;
+    int running;
 };
 
 // Process-wide sampler
@@ -51,16 +53,16 @@ public:
     void set_handler_fn(sample_handler_fn_t h, void* args) 
         { handler_fn = h; handler_fn_args = args; }
 
+
+    pid_t target_pid;
 private:
     // set up perf_event_attr
     void init_attrs();
-
+    void init_attrs_ibs();
 private:
     // perf event configuration
     int num_attrs;
     struct perf_event_attr *attrs;
-
-    pid_t target_pid;
 
     uint64_t use_frequency;
 
@@ -103,10 +105,16 @@ public:
 
     int ready;
 
+
     int num_events;
+    int counter_update;
     struct perf_event_container *events;
 
     perf_event_sample pes;
+
+    int enable_event(int event_id);
+    void disable_event(int event_id);
+
 };
 
 #endif
