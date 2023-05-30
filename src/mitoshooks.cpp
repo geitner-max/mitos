@@ -62,10 +62,11 @@ struct func_args
 //
 //     og_pthread_exit(retval);
 // }
+mitos_output mout;
 
 #ifdef USE_MPI
 // MPI hooks
-mitos_output mout;
+
 
 void sample_handler(perf_event_sample *sample, void *args)
 {
@@ -136,11 +137,11 @@ int MPI_Finalize()
 
 
 
-void sample_handler_omp(perf_event_sample *sample, void *args)
-{
-//    fprintf(stderr, "MPI handler sample: cpu=%d, tid=%d\n", sample->cpu, sample->tid);
-    Mitos_write_sample(sample, &mout);
-}
+//void sample_handler_omp(perf_event_sample *sample, void *args)
+//{
+////    fprintf(stderr, "MPI handler sample: cpu=%d, tid=%d\n", sample->cpu, sample->tid);
+//    Mitos_write_sample(sample, &mout);
+//}
 
 
 
