@@ -4,7 +4,7 @@
 
 #ifndef SAMPLING_VIRTUAL_ADDRESS_WRITER_H
 #define SAMPLING_VIRTUAL_ADDRESS_WRITER_H
-
+#include <iostream>
 #include "dlfcn.h"
 #include "link.h"
 #include "cassert"
