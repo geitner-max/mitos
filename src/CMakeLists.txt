@@ -17,7 +17,9 @@ add_library(mitoshooks_omp SHARED ${MITOSHOOKS_SRC_FILES} ${MITOS_SRC_FILES})
 add_executable(mitosrun mitosrun.cpp)
 
 # Linkage
-target_link_libraries(mitos mitoshooks numa hwloc ${CMAKE_THREAD_LIBS_INIT} stdc++fs)
+# TODO RE-enable hwloc
+# numa hwloc
+target_link_libraries(mitos mitoshooks  ${CMAKE_THREAD_LIBS_INIT} stdc++fs)
 target_link_libraries(mitosrun mitos)
 target_link_libraries(mitoshooks dl)
 

@@ -120,32 +120,33 @@ int Mitos_create_output(mitos_output *mout, const char *prefix_name)
 
 int Mitos_pre_process(mitos_output *mout)
 {
-    // Create hardware topology file for current hardware
-    std::string fname_hardware = std::string(mout->dname_hwdatadir) + "/hwloc.xml";
-    int err = dump_hardware_xml(fname_hardware.c_str());
-    if(err)
-    {
-        std::cerr << "Mitos: Failed to create hardware topology file!\n";
-        return 1;
-    }
-
-    // hwloc puts the file in the current directory, need to move it
-    std::string fname_hardware_final = std::string(mout->dname_topdir) + "/hardware.xml";
-    err = rename(fname_hardware.c_str(), fname_hardware_final.c_str());
-    if(err)
-    {
-        std::cerr << "Mitos: Failed to move hardware topology file to output directory!\n";
-        return 1;
-    }
-
-    std::string fname_lshw = std::string(mout->dname_hwdatadir) + "/lshw.xml";
-    std::string lshw_cmd = "lshw -c memory -xml > " + fname_lshw;
-    err = system(lshw_cmd.c_str());
-    if(err)
-    {
-        std::cerr << "Mitos: Failed to create hardware topology file!\n";
-        return 1;
-    }
+    //TODO Re-enable hwloc
+//    // Create hardware topology file for current hardware
+//    std::string fname_hardware = std::string(mout->dname_hwdatadir) + "/hwloc.xml";
+//    int err = dump_hardware_xml(fname_hardware.c_str());
+//    if(err)
+//    {
+//        std::cerr << "Mitos: Failed to create hardware topology file!\n";
+//        return 1;
+//    }
+//
+//    // hwloc puts the file in the current directory, need to move it
+//    std::string fname_hardware_final = std::string(mout->dname_topdir) + "/hardware.xml";
+//    err = rename(fname_hardware.c_str(), fname_hardware_final.c_str());
+//    if(err)
+//    {
+//        std::cerr << "Mitos: Failed to move hardware topology file to output directory!\n";
+//        return 1;
+//    }
+//
+//    std::string fname_lshw = std::string(mout->dname_hwdatadir) + "/lshw.xml";
+//    std::string lshw_cmd = "lshw -c memory -xml > " + fname_lshw;
+//    err = system(lshw_cmd.c_str());
+//    if(err)
+//    {
+//        std::cerr << "Mitos: Failed to create hardware topology file!\n";
+//        return 1;
+//    }
 
     return 0;
 }
