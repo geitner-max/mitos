@@ -64,19 +64,27 @@ int perf_event_open(struct perf_event_attr *attr,
 }
 
 void update_sampling_events() {
-    int active_core = get_psr();
-    //std::cout << "Core: " << active_core << ", Events: " << tsmp.num_events << "\n";
-    // std::cout << "Method called: "<< active_core << "\n";
-    if (active_core < 0) {
-        std::cout << "No Core active\n";
-        return;
-    }
-    for (int i = 0; i < tsmp.num_events; i++) {
-        //std::cout << "Check " << i << std::endl;
-        if (active_core == i) {
-            tsmp.enable_event(active_core);
-        }else {
-            tsmp.disable_event(i);
+    int ret = 1;
+    // idea: find where process is running
+    // - try to enable new running core
+    // - try to disable old monitored core
+    // function completes if enable thread was successful
+    // possible disadvantage: function only completes if enable_event has been successful (no other IBS process runs on same core)
+    while(ret != 0) {
+        int active_core = get_psr();
+        //std::cout << "Core: " << active_core << ", Events: " << tsmp.num_events << "\n";
+        // std::cout << "Method called: "<< active_core << "\n";
+        if (active_core < 0) {
+            std::cout << "No Core active\n";
+            return;
+        }
+        for (int i = 0; i < tsmp.num_events; i++) {
+            //std::cout << "Check " << i << std::endl;
+            if (active_core == i) {
+                ret = tsmp.enable_event(active_core);
+            }else {
+                tsmp.disable_event(i);
+            }
         }
     }
 }
@@ -309,7 +317,7 @@ int threadsmpl::init(procsmpl *parent)
     ret = init_perf_events(proc_parent->attrs, proc_parent->num_attrs, proc_parent->mmap_size);
     if(ret)
         return ret;
-#ifndef USE_IBS_ALL_SELECTIVE_ON
+#ifdef USE_IBS_ALL_ON
     ret = init_thread_sighandler();
     if(ret)
         return ret;
@@ -332,10 +340,9 @@ int threadsmpl::init_perf_events(struct perf_event_attr *attrs, int num_attrs, s
         events[i].fd = -1;
         events[i].attr = attrs[i];
     }
-    // update_sampling_events();
     return 0;
-#endif
-
+#else
+    // Case IBS USE_IBS_ALL_ON
     for(int i=0; i < num_events; i++)
     {
         events[i].running = 0;
@@ -365,6 +372,7 @@ int threadsmpl::init_perf_events(struct perf_event_attr *attrs, int num_attrs, s
             return 1;
         }
     }
+#endif
 #else
     int i;
 
@@ -488,6 +496,7 @@ int threadsmpl::begin_sampling()
 #if defined(USE_IBS_FETCH) || defined(USE_IBS_OP)
     #if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
         update_sampling_events();
+        return 0;
     #endif
     #ifdef USE_IBS_ALL_ON
         for (i = 0; i <num_events; i++) {
@@ -521,13 +530,19 @@ void threadsmpl::end_sampling()
 {
     int i, ret;
 #if defined(USE_IBS_FETCH) || defined(USE_IBS_OP)
-    for (i = 0; i < num_events; i++) {
-        if (events[i].fd != -1) {
-            ret = ioctl(events[i].fd, PERF_EVENT_IOC_DISABLE, 0);
-            if(ret)
-                perror("ioctl END SAMPLING");
+    #ifdef USE_IBS_ALL_ON
+        for (i = 0; i < num_events; i++) {
+            if (events[i].fd != -1) {
+                ret = ioctl(events[i].fd, PERF_EVENT_IOC_DISABLE, 0);
+                if(ret)
+                    perror("ioctl END SAMPLING");
+            }
         }
-    }
+    #else
+        for (i = 0; i < num_events; i++) {
+            tsmp.disable_event(i);
+        }
+    #endif
 #else
     ret = ioctl(events[0].fd, PERF_EVENT_IOC_DISABLE, 0);
     if(ret)
@@ -550,7 +565,6 @@ void threadsmpl::end_sampling()
 
 int threadsmpl::enable_event(int event_id) {
     if (!events[event_id].running) {
-
         std::cout << "Enable event for " << event_id << std::endl;
         clock_t start = clock();
         events[event_id].fd = -1;
@@ -640,10 +654,12 @@ int threadsmpl::enable_event(int event_id) {
             perror("ioctl ST");
 
         ret = ioctl(events[event_id].fd, PERF_EVENT_IOC_ENABLE, 0);
-        events[event_id].running = 1;
+        if (ret == 0) {
+            events[event_id].running = 1;
+        }
         clock_t end = clock();
         float seconds_update = (float) (end - start) / CLOCKS_PER_SEC;
-        std::cout << seconds_update << "\n";
+        std::cout << seconds_update << "," << ret  << "\n";
         return ret;
     }
     return 0;
@@ -658,6 +674,7 @@ void threadsmpl::disable_event(int event_id) {
             close(events[event_id].fd);
             if(ret)
                 perror("ioctl END");
+                std::cout << "Err ioctl END: " << events[event_id].fd <<", " << event_id << "\n";
         }
 
     }

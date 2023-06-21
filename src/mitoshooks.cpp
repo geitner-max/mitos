@@ -84,7 +84,9 @@ int MPI_Init(int *argc, char ***argv)
 
     char rank_prefix[32];
     sprintf(rank_prefix, "rank_%d", mpi_rank);
-
+    if (mpi_rank == 0) {
+        save_virtual_address_offset("virt_address.txt");
+    }
     Mitos_create_output(&mout, rank_prefix);
     pid_t curpid = getpid();
     std::cout << "Curpid: " << curpid << ", Rank: " << mpi_rank << std::endl;
@@ -125,6 +127,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
 int MPI_Finalize()
 {
+    std::cout << "MPI Finalize\n";
     //fprintf(stderr, "MPI_Finalize hook\n");
     int mpi_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
