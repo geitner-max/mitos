@@ -15,8 +15,6 @@
 
 #include "mpi.h"
 #include "Mitos.h"
-//#include <omp.h>
-//#include <omp-tools.h>
 
 
 // MPI hooks
@@ -26,7 +24,12 @@ int MPI_Finalize();
 
 #endif // USE_MPI
 
+#ifdef USE_OPEN_MP
+#include <omp.h>
+#include <omp-tools.h>
+
 // OMP Hooks
-//int ompt_initialize(ompt_function_lookup_t lookup, int initial_device_num,
-//                    ompt_data_t *tool_data);
-//void ompt_finalize(ompt_data_t *tool_data);
+int ompt_initialize(ompt_function_lookup_t lookup, int initial_device_num,
+                    ompt_data_t *tool_data);
+void ompt_finalize(ompt_data_t *tool_data);
+#endif // USE_OPEN_MP

@@ -10,6 +10,7 @@ set(MITOS_MINOR_VERSION 8)
 set(MITOS_PATCH_VERSION 1)
 set(MITOS_VERSION ${MITOS_MAJOR_VERSION}.${MITOS_MINOR_VERSION}.${MITOS_PATCH_VERSION})
 set(IBS_TYPE "OFF" "IBS_FETCH" "IBS_OP" CACHE STRING "Enabling Instruction-Based Sampling")
+option(MITOSHOOKS_OPEN_MP "Enable Mitoshooks OpenMP-Routing" OFF)
 set_property(CACHE IBS_TYPE PROPERTY STRINGS
         "OFF" "IBS_FETCH" "IBS_OP")
 
@@ -71,6 +72,17 @@ if(MPI_FOUND)
 endif()
 
 
+if(OPENMP_FOUND)
+    message(STATUS "Found OpenMP")
+    if (MITOSHOOKS_OPEN_MP)
+        message(STATUS "Mitoshooks OpenMP Enabled")
+        add_definitions(-DUSE_OPEN_MP)
+    else()
+        message(STATUS "Mitoshooks OpenMP Disabled")
+    endif ()
+else()
+    message(STATUS "OpenMP not Found")
+endif ()
 
 if(Dyninst_FOUND)
     add_definitions(-DUSE_DYNINST)

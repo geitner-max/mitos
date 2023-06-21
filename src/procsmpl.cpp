@@ -333,46 +333,46 @@ int threadsmpl::init_perf_events(struct perf_event_attr *attrs, int num_attrs, s
 #if defined(USE_IBS_FETCH) || defined(USE_IBS_OP)
     num_events = num_attrs;
     events = (struct perf_event_container*)malloc(num_events*sizeof(struct perf_event_container));
-#if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
-    for(int i=0; i < num_events; i++) {
-        events[i].running = 0;
-        // initailize one event for each core
-        events[i].fd = -1;
-        events[i].attr = attrs[i];
-    }
-    return 0;
-#else
-    // Case IBS USE_IBS_ALL_ON
-    for(int i=0; i < num_events; i++)
-    {
-        events[i].running = 0;
-        // initailize one event for each core
-        events[i].fd = -1;
-        events[i].attr = attrs[i];
-        //std::cout << "Init Event " << i << "\n";
-        // Create attr according to sample mode
-        // defines which core is monitored by this event
-        events[i].fd = perf_event_open(&events[i].attr, gettid(), i, events[i].fd, 0);
-        //fprintf(stderr, "i: %d : thread: %d : events[0].fd: %d : returned %d\n", i, gettid(), events[0].fd, errno);
-
-        if(events[i].fd == -1)
-        {
-            perror("perf_event_open");
-            std::cout << "Error: " << i << std::endl;
-            return 1;
+    #if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
+        for(int i=0; i < num_events; i++) {
+            events[i].running = 0;
+            // initailize one event for each core
+            events[i].fd = -1;
+            events[i].attr = attrs[i];
         }
-
-        // Create mmap buffer for samples
-        events[i].mmap_buf = (struct perf_event_mmap_page*)
-                mmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, events[i].fd, 0);
-
-        if(events[i].mmap_buf == MAP_FAILED)
+        return 0;
+    #else
+        // Case IBS USE_IBS_ALL_ON
+        for(int i=0; i < num_events; i++)
         {
-            perror("mmap");
-            return 1;
+            events[i].running = 0;
+            // initailize one event for each core
+            events[i].fd = -1;
+            events[i].attr = attrs[i];
+            //std::cout << "Init Event " << i << "\n";
+            // Create attr according to sample mode
+            // defines which core is monitored by this event
+            events[i].fd = perf_event_open(&events[i].attr, gettid(), i, events[i].fd, 0);
+            //fprintf(stderr, "i: %d : thread: %d : events[0].fd: %d : returned %d\n", i, gettid(), events[0].fd, errno);
+
+            if(events[i].fd == -1)
+            {
+                perror("perf_event_open");
+                std::cout << "Error: " << i << std::endl;
+                return 1;
+            }
+
+            // Create mmap buffer for samples
+            events[i].mmap_buf = (struct perf_event_mmap_page*)
+                    mmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, events[i].fd, 0);
+
+            if(events[i].mmap_buf == MAP_FAILED)
+            {
+                perror("mmap");
+                return 1;
+            }
         }
-    }
-#endif
+    #endif
 #else
     int i;
 
@@ -509,7 +509,6 @@ int threadsmpl::begin_sampling()
                 perror("ioctl");
             }
             events[i].running = 1;
-
         }
         return ret;
 #endif

@@ -18,9 +18,11 @@ if(MPI_FOUND)
     add_executable(mpi_matmul mpi_matmul.cpp)
     target_link_libraries(mpi_matmul mitos mitoshooks ${MPI_LIBRARIES})
 endif()
-if(OPENMP_FOUND)
+
+if(OpenMP_CXX_FOUND)
     # env OMP_TOOL_LIBRARIES=$(PWD)/libinit.so
+    # OMP_TOOL_LIBRARIES=./../src/libmitoshooks.so
     include_directories(./../src)
     add_executable(omp_example omp_example.cpp)
-    target_link_libraries(omp_example OpenMP::OpenMP_CXX mitos mitoshooks_omp)
+    target_link_libraries(omp_example mitos mitoshooks OpenMP::OpenMP_CXX)
 endif ()
