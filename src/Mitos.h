@@ -52,7 +52,7 @@ int Mitos_create_output(struct mitos_output *mout, const char *prefix_name);
 int Mitos_pre_process(struct mitos_output *mout);
 int Mitos_write_sample(struct perf_event_sample *s, struct mitos_output *mout);
 int Mitos_post_process(const char *bin_name, struct mitos_output *mout);
-
+int Mitos_merge_files(const std::string& dir_prefix, const std::string& dir_first_dir);
 #ifdef __cplusplus
 } // extern "C"
 #endif

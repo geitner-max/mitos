@@ -12,6 +12,7 @@
 // #define _GNU_SOURCE // sched_getcpu(3) is glibc-specific (see the man page)
 #include <sched.h>
 #include <cassert>
+#include <ctime>
 
 // 512 should be enough for xeon-phi
 #define MAX_THREADS 512
@@ -62,7 +63,7 @@ mitos_output mout;
 
 #ifdef USE_MPI
 // MPI hooks
-
+long ts_output = 0;
 
 void sample_handler(perf_event_sample *sample, void *args)
 {
@@ -77,9 +78,13 @@ int MPI_Init(int *argc, char ***argv)
 
     int mpi_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    ts_output = std::time(NULL);
+    MPI_Bcast(&ts_output, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+    // send timestamp from rank 0 to all others to synchronize folder prefix
 
-    char rank_prefix[32];
-    sprintf(rank_prefix, "rank_%d", mpi_rank);
+    char rank_prefix[48];
+    sprintf(rank_prefix, "%ld_rank_%d", ts_output, mpi_rank);
+
     if (mpi_rank == 0) {
         save_virtual_address_offset("virt_address.txt");
     }
@@ -129,7 +134,11 @@ int MPI_Finalize()
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
     Mitos_end_sampler();
     Mitos_post_process("/proc/self/exe", &mout);
-
+    MPI_Barrier(MPI_COMM_WORLD);
+    // merge files
+    if (mpi_rank == 0) {
+        int ret_val = Mitos_merge_files(std::to_string(ts_output) + "_rank_", std::to_string(ts_output) + "_rank_0");
+    }
     return PMPI_Finalize();
 }
 #endif // USE_MPI

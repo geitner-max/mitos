@@ -10,6 +10,7 @@
 
 static __thread threadsmpl tsmp;
 
+
 pid_t gettid(void)
 {
 	return (pid_t)syscall(__NR_gettid);
@@ -65,6 +66,9 @@ int perf_event_open(struct perf_event_attr *attr,
 
 void update_sampling_events() {
     int ret = 1;
+    // TODO: Fix case where thread migration fails
+    // Option A: stop monitoring for this process
+    // Option B: stay in loop until core can be monitored (--> infinite loop problem)
     // idea: find where process is running
     // - try to enable new running core
     // - try to disable old monitored core
@@ -116,7 +120,7 @@ void thread_sighandler(int sig, siginfo_t *info, void *extra)
 //    clock_t time_process_end = clock();
 #if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
     tsmp.counter_update++;
-    if(tsmp.counter_update >= 100) {
+    if(tsmp.counter_update >= 250) {
         tsmp.counter_update = 0;
         update_sampling_events();
     }
@@ -658,10 +662,10 @@ int threadsmpl::enable_event(int event_id) {
         }
         clock_t end = clock();
         float seconds_update = (float) (end - start) / CLOCKS_PER_SEC;
-        std::cout << seconds_update << "," << ret  << "\n";
+        // std::cout << seconds_update << "," << ret  << "\n";
         return ret;
     }
-    return 0;
+    return 0; // process already running, success
 }
 
 void threadsmpl::disable_event(int event_id) {

@@ -502,3 +502,75 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
 
     return 0;
 }
+
+
+int Mitos_merge_files(const std::string& dir_prefix, const std::string& dir_first_dir_prefix) {
+    // find exact directory name for mpi_rank 0
+    fs::path path_root{"."};
+    bool first_dir_found = false;
+    std::string path_first_dir{""};
+    for (auto const& dir_entry : std::filesystem::directory_iterator{path_root}) {
+        if (dir_entry.path().u8string().rfind("./" + dir_first_dir_prefix) == 0) {
+            path_first_dir = dir_entry.path().u8string();
+            first_dir_found = true;
+        }
+    }
+    if(first_dir_found) {
+        std::cout << "First Dir Found, copy Files From " << path_first_dir << " to result folder: ./" << dir_prefix << "result\n";
+    }else {
+        // error, directory not found
+        return 1;
+    }
+    std::string path_dir_result = "./"+ dir_prefix + "result";
+    // create directories
+    fs::create_directory(path_dir_result);
+    fs::create_directory(path_dir_result + "/data");
+    fs::create_directory(path_dir_result + "/hwdata");
+    fs::create_directory(path_dir_result + "/src");
+    // copy first directory
+    fs::copy(path_first_dir, path_dir_result);
+    fs::copy(path_first_dir + "/data", path_dir_result + "/data");
+    fs::copy(path_first_dir + "/hwdata", path_dir_result + "/hwdata");
+    fs::copy(path_first_dir + "/src", path_dir_result + "/src");
+    // delete first folder
+    fs::remove_all(path_first_dir);
+
+    std::string path_samples_dest = path_dir_result + "/data/samples.csv";
+    // check if file exist
+    if (fs::exists(path_samples_dest)) {
+        std::ofstream file_samples_out;
+        file_samples_out.open(path_samples_dest, std::ios_base::app);
+        // for other directories, copy samples to dest dir
+        for (auto const& dir_entry : std::filesystem::directory_iterator{path_root})
+        {
+            if (dir_entry.path().u8string().rfind("./"+ dir_prefix) == 0
+            && dir_entry.path().u8string() != path_first_dir
+            && dir_entry.path().u8string() != path_dir_result) {
+                std::cout << "Move Data " << dir_entry.path() << " to Result Folder...\n";
+                // src file
+                std::string path_samples_src = dir_entry.path().u8string() + "/data/samples.csv";
+                if (fs::exists(path_samples_src)) {
+                    // copy data
+                    std::ifstream file_samples_in(path_samples_src);
+                    std::string line;
+                    bool is_first_line = true;
+                    while (std::getline(file_samples_in, line))
+                    {
+                        if (is_first_line){
+                            is_first_line = false;
+                        }else{
+                            file_samples_out << line << "\n";
+                        }
+                    }
+                    file_samples_in.close();
+                    // delete old folder
+                    fs::remove_all(dir_entry.path().u8string());
+                }
+            }
+        } // END LOOP
+        file_samples_out.close();
+    }
+    // TODO Copy Raw samples
+    std::cout << "Merge successfully completed\n";
+    return 0;
+}
