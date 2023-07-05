@@ -12,6 +12,8 @@
 #include <asm/unistd.h>
 #include <pthread.h>
 #include <signal.h>
+#include <vector>
+#include <mutex>
 
 #include "Mitos.h"
 
@@ -25,6 +27,12 @@ struct perf_event_container
     struct perf_event_attr attr;
     struct perf_event_mmap_page *mmap_buf;
     int running;
+#ifdef USE_IBS_DISTR_THREAD_MON
+    int current_core;
+    pid_t tid;
+    std::ofstream* file_str_raw;
+#endif
+
 };
 
 // Process-wide sampler
@@ -53,6 +61,7 @@ public:
     void set_handler_fn(sample_handler_fn_t h, void* args) 
         { handler_fn = h; handler_fn_args = args; }
 
+    void add_event(int tid, mitos_output* mout);
 
     pid_t target_pid;
 private:
@@ -82,6 +91,7 @@ private:
 
     // misc
     bool first_time;
+
 };
 
 // Thread-local Sampler
@@ -93,6 +103,11 @@ class threadsmpl
 public:
     int begin_sampling();
     void end_sampling();
+
+    ~threadsmpl(){
+        std::destroy(vec_events.begin(), vec_events.end());
+    }
+
 
     int init(procsmpl *parent);
 
@@ -110,11 +125,21 @@ public:
     int counter_update;
     struct perf_event_container *events;
 
+    bool* core_occupied;
+    int core_count;
+    std::vector<perf_event_container> vec_events;
+    std::mutex m;
+
     perf_event_sample pes;
 
     int enable_event(int event_id);
     void disable_event(int event_id);
 
+#ifdef USE_IBS_DISTR_THREAD_MON
+
+    int enable_vec_event(int event_id);
+    void add_event(int tid, mitos_output* mout);
+#endif
 };
 
 #endif

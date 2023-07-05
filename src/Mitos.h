@@ -36,6 +36,9 @@ void Mitos_set_handler_fn(sample_handler_fn_t h, void *args);
 // Sampler invocation
 void Mitos_begin_sampler();
 void Mitos_end_sampler();
+#ifdef USE_IBS_DISTR_THREAD_MON
+void Mitos_add_event(int tid, mitos_output *pOutput);
+#endif
 
 // Memory attribution
 void Mitos_add_symbol(const char* n, void *a, size_t s, size_t *dims, unsigned int ndims);
