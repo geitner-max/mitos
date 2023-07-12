@@ -329,6 +329,7 @@ void Mitos_write_samples_header(std::ofstream& fproc) {
 int Mitos_post_process(const char *bin_name, mitos_output *mout)
 {
     int err = 0;
+    fflush(mout->fout_raw); // flush raw samples stream before post processing starts
 
     // Open input/output files
     std::ifstream fraw(mout->fname_raw);
