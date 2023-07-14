@@ -372,7 +372,7 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
 
         return 1;
     }
-    fraw.close(); // close raw file, flush not yet written data
+
     symtab_code_src = new SymtabCodeSource(strdup(bin_name));
 
     // Get machine information
@@ -497,7 +497,7 @@ int Mitos_post_process(const char *bin_name, mitos_output *mout)
 
         tmp_line++;
     }
-
+    fraw.close();
     fproc.close();
 
 

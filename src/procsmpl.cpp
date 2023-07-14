@@ -76,9 +76,14 @@ void update_sampling_events() {
     // - try to disable old monitored core
     // function completes if enable thread was successful
     // possible disadvantage: function only completes if enable_event has been successful (no other IBS process runs on same core)
+//    int has_switch = 0;
+//    struct timespec tp;
+//    struct timespec tp2;
+//    clockid_t clk_id = CLOCK_PROCESS_CPUTIME_ID;
+//    int t_start2 = clock_gettime(clk_id, &tp);
     while(ret != 0) {
-        // int active_core = get_psr(); // OLD function
-        int active_core = sched_getcpu();
+        int active_core = get_psr(); // OLD function
+        //int active_core = sched_getcpu(); // this function only works on mitoshooks, monitoring occurs on same thread as computation
         //std::cout << "Core: " << active_core << ", Events: " << tsmp.num_events << "\n";
         // std::cout << "Method called: "<< active_core << "\n";
         if (active_core < 0) {
@@ -88,12 +93,19 @@ void update_sampling_events() {
         for (int i = 0; i < tsmp.num_events; i++) {
             //std::cout << "Check " << i << std::endl;
             if (active_core == i) {
+//                has_switch =  !(tsmp.events[i].running);
                 ret = tsmp.enable_event(active_core);
             }else {
                 tsmp.disable_event(i);
             }
         }
     }
+    //clock_t t_end = clock();
+    //float seconds = (float)(t_end - t_start) / CLOCKS_PER_SEC;
+//    int t_end2 = clock_gettime(clk_id, &tp2);
+//    std::cout << has_switch << "," << (tp2.tv_nsec - tp.tv_nsec) <<"\n";
+    //std::cout << has_switch << "," << seconds <<"\n";
+    //float seconds_update = (float) (time_update_sample_end - time_process_end) / CLOCKS_PER_SEC;
 }
 
 void thread_sighandler(int sig, siginfo_t *info, void *extra)
@@ -132,7 +144,7 @@ void thread_sighandler(int sig, siginfo_t *info, void *extra)
     //float seconds = (float)(time_process_end - start) / CLOCKS_PER_SEC;
     //float seconds_update = (float) (time_update_sample_end - time_process_end) / CLOCKS_PER_SEC;
     // << "Process: " << seconds << ", Counter: "
-    std::cout  << t_start <<", " << t_end << ", " << gettid() << ", " << fd << "," << sched_getcpu() << "\n";
+    //std::cout  << t_start <<", " << t_end << ", " << gettid() << ", " << fd << "," << sched_getcpu() << "\n";
 }
 
 
@@ -392,6 +404,7 @@ int threadsmpl::init_perf_events(struct perf_event_attr *attrs, int num_attrs, s
                 return 1;
             }
         }
+        return 0;
     #endif
     #ifdef USE_IBS_DISTR_THREAD_MON
         int amount_cores = get_num_cores();

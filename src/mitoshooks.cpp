@@ -142,6 +142,7 @@ int MPI_Finalize()
     if (mpi_rank == 0) {
         int ret_val = Mitos_merge_files(std::to_string(ts_output) + "_rank_", std::to_string(ts_output) + "_rank_0");
     }
+    MPI_Barrier(MPI_COMM_WORLD);
     return PMPI_Finalize();
 }
 #endif // USE_MPI
