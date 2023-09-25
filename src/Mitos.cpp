@@ -40,11 +40,6 @@ void Mitos_end_sampler()
     m_procsmpl.end_sampling(); 
 }
 
-#ifdef USE_IBS_DISTR_THREAD_MON
-void Mitos_add_event(int tid, mitos_output *mout) {
-    m_procsmpl.add_event(tid, mout);
-}
-#endif
 
 void Mitos_add_symbol(const char* n, void *a, size_t s, size_t *dims, unsigned int ndims)
 {

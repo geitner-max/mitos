@@ -406,16 +406,6 @@ int threadsmpl::init_perf_events(struct perf_event_attr *attrs, int num_attrs, s
         }
         return 0;
     #endif
-    #ifdef USE_IBS_DISTR_THREAD_MON
-        int amount_cores = get_num_cores();
-        core_occupied = (bool*) malloc(amount_cores * sizeof(bool));
-        core_count = amount_cores;
-        for (int i = 0; i < core_count; i++) {
-            core_occupied[i] = false;
-        }
-        // no other configuration in init_perf required
-        return 0;
-    #endif
 #else
     int i;
 
@@ -555,10 +545,6 @@ int threadsmpl::begin_sampling()
         }
         return ret;
     #endif
-    #ifdef USE_IBS_DISTR_THREAD_MON
-        // do nothing, add_event() initializes and starts sampling
-        return 0;
-    #endif
 #else
     ret = ioctl(events[0].fd, PERF_EVENT_IOC_RESET, 0);
     if(ret)
@@ -595,9 +581,7 @@ void threadsmpl::end_sampling()
         perror("ioctl");
 #endif
 
-#ifdef USE_IBS_DISTR_THREAD_MON
-    // process_sample_buffer for vector events
-#else
+
     for(i=0; i<num_events; i++)
     {
         // Flush out remaining samples
@@ -615,7 +599,7 @@ void threadsmpl::end_sampling()
                               proc_parent->pgmsk);
         }
     }
-#endif
+
 }
 
 
@@ -736,146 +720,3 @@ void threadsmpl::disable_event(int event_id) {
 
     }
 }
-
-#ifdef USE_IBS_DISTR_THREAD_MON
-
-void procsmpl::add_event(int tid, mitos_output* mout) {
-    tsmp.add_event(tid, mout);
-}
-
-void threadsmpl::add_event(int tid, mitos_output* mout) {
-    // TODO delete method in future version
-    struct perf_event_container event_data{};
-    event_data.tid = tid;
-    int32_t index_event = vec_events.size();
-    // init data attr
-    //struct perf_event_attr attr;
-    init_attr_ibs(&event_data.attr, tsmp.proc_parent->sample_period);
-    //event_data.attr = attr;
-    // start file
-    std::stringstream str_filename;
-    str_filename << std::string(mout->dname_datadir) << "/raw_samples_" << tid << ".csv";
-    mout->fname_raw = strdup(str_filename.str().c_str());
-    mout->fout_raw = fopen(mout->fname_raw,"w");
-    vec_events.push_back(event_data);
-    // ---------------------
-    // check core availability
-    int running_core = sched_getcpu();
-    if (!this->core_occupied[running_core]) {
-        // if available --> start perf
-        this->core_occupied[running_core] = true;
-        this->enable_vec_event(index_event);
-        std::cout << "Start monitoring on core: " << running_core << "\n";
-    }
-
-    // otherwise --> select other free core if possible
-    // ------------------------------
-    // init perf_event_open + sighandler
-
-}
-
-
-int threadsmpl::enable_vec_event(int event_id) {
-
-    if (!vec_events[event_id].running) {
-        //std::cout << "Enable event for " << event_id << std::endl;
-        clock_t start = clock();
-        vec_events[event_id].fd = -1;
-        vec_events[event_id].fd = perf_event_open(&vec_events[event_id].attr, gettid(), event_id, vec_events[event_id].fd, 0);
-        if(vec_events[event_id].fd == -1)
-        {
-            perror("perf_event_open");
-            //std::cout << "Core " << event_id << " could not be initialized\n";
-            return 1;
-        }else {
-            //std::cout << "Perf Open Success: " << vec_events[event_id].fd << "\n";
-        }
-
-        // Create mmap buffer for samples
-        vec_events[event_id].mmap_buf = (struct perf_event_mmap_page*)
-                mmap(NULL, tsmp.proc_parent->mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, vec_events[event_id].fd, 0);
-
-        if(vec_events[event_id].mmap_buf == MAP_FAILED)
-        {
-            perror("mmap");
-            return 1;
-        }
-        // init sighandler
-        int ret;
-        struct f_owner_ex fown_ex;
-        struct sigaction sact;
-
-        // Set up signal handler
-        memset(&sact, 0, sizeof(sact));
-        sact.sa_sigaction = &thread_sighandler;
-        sact.sa_flags = SA_SIGINFO;
-
-        ret = sigaction(SIGIO, &sact, NULL);
-        if(ret)
-        {
-            perror("sigaction");
-            return ret;
-        }
-
-        // Unblock SIGIO signal if necessary
-        sigset_t sold, snew;
-        sigemptyset(&sold);
-        sigemptyset(&snew);
-        sigaddset(&snew, SIGIO);
-
-        ret = sigprocmask(SIG_SETMASK, NULL, &sold);
-        if(ret)
-        {
-            perror("sigaction");
-            return 1;
-        }
-
-        if(sigismember(&sold, SIGIO))
-        {
-            ret = sigprocmask(SIG_UNBLOCK, &snew, NULL);
-            if(ret)
-            {
-                perror("sigaction");
-                return 1;
-            }
-        }
-
-        ret = fcntl(vec_events[event_id].fd, F_SETSIG, SIGIO);
-        if(ret)
-        {
-            perror("fcntl 1");
-            return 1;
-        }
-        ret = fcntl(vec_events[event_id].fd, F_SETFL, O_NONBLOCK | O_ASYNC);
-        if(ret)
-        {
-            perror("fcntl 2");
-            return 1;
-        }
-        // Set owner to current thread
-        fown_ex.type = F_OWNER_TID;
-        fown_ex.pid = gettid();
-        ret = fcntl(vec_events[event_id].fd, F_SETOWN_EX, (unsigned long)&fown_ex);
-        if(ret)
-        {
-            perror("fcntl 3");
-            return 1;
-        }
-
-        ret = ioctl(vec_events[event_id].fd, PERF_EVENT_IOC_RESET, 0);
-        if(ret)
-            perror("ioctl ST");
-
-        ret = ioctl(vec_events[event_id].fd, PERF_EVENT_IOC_ENABLE, 0);
-        if (ret == 0) {
-            vec_events[event_id].running = 1;
-        }
-        //clock_t end = clock();
-        //float seconds_update = (float) (end - start) / CLOCKS_PER_SEC;
-        // std::cout << seconds_update << "," << ret  << "\n";
-        return ret;
-    }
-    return 0; // process already running, success
-}
-
-#endif

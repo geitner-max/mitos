@@ -14,9 +14,9 @@ option(MITOSHOOKS_OPEN_MP "Enable Mitoshooks OpenMP-Routing" OFF)
 set_property(CACHE IBS_TYPE PROPERTY STRINGS
         "OFF" "IBS_FETCH" "IBS_OP")
 
-set(IBS_SAMPLING_MODE "ALL_ON" "ALL_SELECTIVE_ON" "THREAD_MIGRATION" "DISTRIBUTED_THREAD_MONITORING" CACHE STRING "ALL_ON: Run sampling on all cores; ALL_SELECTIVE_ON: Track where process runs and turn sampling on and off depending on running cpu; THREAD_MIGRATION: Run single sampler that migrates core after detecting a core migration; DISTRIBUTED_THREAD_MONITORING: Recommended for OpenMP, monitors threads individually with switching")
+set(IBS_SAMPLING_MODE "ALL_ON" "THREAD_MIGRATION"  CACHE STRING "ALL_ON: Run sampling on all cores; THREAD_MIGRATION: Run single sampler that migrates core after detecting a core migration; ")
 set_property(CACHE IBS_SAMPLING_MODE PROPERTY STRINGS
-        "ALL_ON" "ALL_SELECTIVE_ON" "THREAD_MIGRATION" "DISTRIBUTED_THREAD_MONITORING")
+        "ALL_ON" "ALL_SELECTIVE_ON" "THREAD_MIGRATION")
 
 if ((IBS_TYPE STREQUAL "IBS_FETCH") OR (IBS_TYPE STREQUAL "IBS_OP"))
     # define sampling mode for IBS
@@ -26,9 +26,6 @@ if ((IBS_TYPE STREQUAL "IBS_FETCH") OR (IBS_TYPE STREQUAL "IBS_OP"))
     elseif (IBS_SAMPLING_MODE STREQUAL "THREAD_MIGRATION")
         message(STATUS "IBS Sampling Mode THREAD_MIGRATION Selected: Monitor one thread; Migrate sampler at runtime from one core to another")
         add_definitions(-DUSE_IBS_THREAD_MIGRATION)
-    elseif (IBS_SAMPLING_MODE STREQUAL "DISTRIBUTED_THREAD_MONITORING")
-        message(STATUS "IBS Sampling Mode DISTRIBUTED_THREAD_MONITORING Selected: Recommended for OpenMP, monitors threads individually with switching")
-        add_definitions(-DUSE_IBS_DISTR_THREAD_MON)
     else()
         message(STATUS "IBS not set")
     endif ()

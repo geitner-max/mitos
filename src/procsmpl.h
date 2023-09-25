@@ -27,12 +27,6 @@ struct perf_event_container
     struct perf_event_attr attr;
     struct perf_event_mmap_page *mmap_buf;
     int running;
-#ifdef USE_IBS_DISTR_THREAD_MON
-    int current_core;
-    pid_t tid;
-    std::ofstream* file_str_raw;
-#endif
-
 };
 
 // Process-wide sampler
@@ -135,11 +129,6 @@ public:
     int enable_event(int event_id);
     void disable_event(int event_id);
 
-#ifdef USE_IBS_DISTR_THREAD_MON
-
-    int enable_vec_event(int event_id);
-    void add_event(int tid, mitos_output* mout);
-#endif
 };
 
 #endif
