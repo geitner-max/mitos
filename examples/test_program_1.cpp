@@ -6,6 +6,7 @@
 #include <thread>
 #include <iostream>
 #include "virtual_address_writer.h"
+#include <unistd.h>
 
 #define ROW_MAJOR(x,y,width) y*width+x
 
@@ -30,7 +31,6 @@ void init_matrices(int N, double **a, double **b, double **c)
 
 void matmul(int N, double *a, double *b, double *c)
 {
-//#pragma omp parallel for
     for(int i=0; i<N; ++i)
     {
         for(int j=0; j<N; ++j)

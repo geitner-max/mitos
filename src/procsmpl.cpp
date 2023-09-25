@@ -133,7 +133,7 @@ void thread_sighandler(int sig, siginfo_t *info, void *extra)
 
     ioctl(fd, PERF_EVENT_IOC_REFRESH, 1);
 //    clock_t time_process_end = clock();
-#if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
+#if defined( USE_IBS_THREAD_MIGRATION)
     tsmp.counter_update++;
     if(tsmp.counter_update >= 250) {
         tsmp.counter_update = 0;
@@ -300,7 +300,7 @@ void init_attr_ibs(struct perf_event_attr* attr, __u64 sample_period) {
 void procsmpl::init_attrs_ibs() {
     num_attrs = 1;
 
-#if defined(USE_IBS_ALL_SELECTIVE_ON) || defined(USE_IBS_ALL_ON) || defined(USE_IBS_THREAD_MIGRATION)
+#if defined(USE_IBS_ALL_ON) || defined(USE_IBS_THREAD_MIGRATION)
     // if ALL_ON or Selective On
     num_attrs = get_num_cores();
     std::cout << "Amount CPUs: " << num_attrs << std::endl;
@@ -364,7 +364,7 @@ int threadsmpl::init_perf_events(struct perf_event_attr *attrs, int num_attrs, s
     num_events = num_attrs;
     events = (struct perf_event_container*)malloc(num_events*sizeof(struct perf_event_container));
 
-    #if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
+    #if defined( USE_IBS_THREAD_MIGRATION)
         for(int i=0; i < num_events; i++) {
             events[i].running = 0;
             // initailize one event for each core
@@ -537,7 +537,7 @@ int threadsmpl::begin_sampling()
     }
 
 #if defined(USE_IBS_FETCH) || defined(USE_IBS_OP)
-    #if defined( USE_IBS_THREAD_MIGRATION) || defined(USE_IBS_ALL_SELECTIVE_ON)
+    #if defined( USE_IBS_THREAD_MIGRATION)
         update_sampling_events();
         return 0;
     #endif
@@ -584,7 +584,7 @@ void threadsmpl::end_sampling()
                     perror("ioctl END SAMPLING");
             }
         }
-    #elif defined(USE_IBS_THREAD_MIGRATION) or defined(USE_IBS_ALL_SELECTIVE_ON)
+    #elif defined(USE_IBS_THREAD_MIGRATION)
         for (i = 0; i < num_events; i++) {
             tsmp.disable_event(i);
         }
